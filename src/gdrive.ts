@@ -154,13 +154,31 @@ export function initAndLoginGDrive(clientId: string, silent: boolean = false): P
 }
 
 // Helper to make API calls to Drive
-async function driveFetch(url: string, options: RequestInit = {}) {
+async function driveFetch(url: string, options: RequestInit = {}, retryCount: number = 0): Promise<Response> {
   if (!gdriveAccessToken) throw new Error('Not connected to Google Drive');
   const headers = new Headers(options.headers || {});
   headers.set('Authorization', `Bearer ${gdriveAccessToken}`);
   
   const res = await fetch(url, { ...options, headers });
+  if (res.status === 401 && retryCount === 0) {
+    console.warn('Drive API 401 Unauthorized. Attempting silent token refresh...');
+    const savedClientId = localStorage.getItem('gdrive_client_id');
+    if (savedClientId) {
+      try {
+        await initAndLoginGDrive(savedClientId, true);
+        if (gdriveAccessToken) {
+          console.log('Silent token refresh succeeded! Retrying driveFetch...');
+          return driveFetch(url, options, retryCount + 1);
+        }
+      } catch (refreshErr) {
+        console.warn('Silent token refresh failed:', refreshErr);
+      }
+    }
+  }
   if (!res.ok) {
+    if (res.status === 401) {
+      throw new Error('Google ドライブ認証の有効期限が切れました。スタート画面の設定から再度接続してください。');
+    }
     throw new Error(`Drive API error: ${res.status} ${res.statusText}`);
   }
   return res;

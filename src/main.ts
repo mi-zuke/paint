@@ -315,7 +315,14 @@ btnSave.addEventListener('click', async () => {
         showToast('Google ドライブに保存しました');
         renderStartScreen();
       } catch (err: any) {
-        showToast(`保存に失敗しました: ${err.message}`);
+        const fallbackSaved = saveCanvas(saveData);
+        if (fallbackSaved) {
+          setHasUnsavedChanges(false);
+          showToast(`クラウド保存失敗のため、ローカルに一時保存しました (${err.message})`);
+          renderStartScreen();
+        } else {
+          showToast(`保存に失敗しました: ${err.message}`);
+        }
       }
     } else {
       if (saveCanvas(saveData)) {

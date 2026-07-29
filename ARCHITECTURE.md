@@ -50,7 +50,7 @@ graph TD
 ### 2.4 データ保存と履歴
 * **`undo.ts`**: Undo/Redo の履歴スタックの管理。ストローク描画、レイヤーの追加/削除/並び替え/クリッピング変更、およびレイヤー移動操作など、全てのアクションの状態を記録し復元します。
 * **`storage.ts`**: ブラウザの `localStorage` へのデータ保存、読み込み、使用量の管理を行います。`LayerData` にブレンドモード情報を保持します。
-* **`gdrive.ts`**: Google Identity Services (GIS) および Google Drive API との通信ロジック（認証、ファイルのアップロード/ダウンロード/削除）。
+* **`gdrive.ts`**: Google Identity Services (GIS) および Google Drive API との通信ロジック（認証、ファイルのアップロード/ダウンロード/削除）。API 呼び出し (`driveFetch`) において `HTTP 401 Unauthorized` を検出した際は、自動的にサイレントトークンリフレッシュ (`initAndLoginGDrive`) を試み、成功した場合は自動で当該 API リクエストを再試行するセルフヒール機能を搭載しています。
 * **`gdrive-ui.ts`**: Googleドライブ連携のUI制御、ローカルデータからドライブへのマイグレーション処理、ステータス表示などを担当します。
 
 ## 3. データの流れ (Data Flow)
@@ -63,7 +63,11 @@ graph TD
 5. 描画ストロークおよびレイヤー移動中のホットパスにおいては **`compositeFast()`** が呼ばれ、事前に構築された「下位キャッシュ (`lowerCacheCanvas`)」と「上位キャッシュ (`upperCacheCanvas`)」、および「現在のアクティブクリッピンググループ」のみが合成されてディスプレイの Canvas に超高速転送されます。
 6. レイヤーの選択変更・追加・削除・Undo/Redo 等の構成変更時は **`compositeAndDisplay()`** が呼ばれ、キャッシュが再構築されます。
 
-### 3.2 Undo/Redo のフロー
+### 3.2 保存のフロー (Cloud-First & Fallback Local Safety)
+* **Google ドライブ接続時**: ローカルストレージ (`localStorage` 上限約 5MB) を圧迫しないよう、平常時は Google ドライブ上にのみ保存 (`saveToDrive`) します。API のトークン期限切れ時は `gdrive.ts` のセルフヒールにより自動的に再取得と再試行を行います。
+* **フォールバック保存**: 万が一 Google ドライブへの通信や認証（自動リトライ含む）に失敗した場合に初めて、緊急バックアップとしてブラウザローカルストレージ (`localStorage`) に一時保存を行うフェイルセーフ設計となっています。
+
+### 3.3 Undo/Redo のフロー
 * **記録**: アクションが発生する直前に、対象レイヤーの `ImageData` や状態をコピーし、`undoStack` にPushします。
 * **復元**: 2本指タップやCtrl+Zで `performUndo()` が呼ばれると、`undoStack` からエントリを取り出し、現在の状態を `redoStack` に保存した上で、過去の `ImageData` やレイヤー状態を復元し、再描画します。
 
