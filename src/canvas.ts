@@ -232,6 +232,62 @@ export function compositeFast() {
   displayCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
 }
 
+export function compositeSmart(modifiedLayerId: number) {
+  const dpr = window.devicePixelRatio || 1;
+  const gc = groupCanvas;
+  const gctx = groupCtx;
+  if (!gc || !gctx) {
+    return;
+  }
+
+  if (!lowerCacheCanvas || !upperCacheCanvas) {
+    compositeAndDisplay();
+    return;
+  }
+
+  const [startIdx, endIdx] = getActiveGroupRange();
+
+  if (!lastCachedRange || lastCachedRange[0] !== startIdx || lastCachedRange[1] !== endIdx) {
+    compositeAndDisplay();
+    return;
+  }
+
+  const modifiedIdx = layers.findIndex(l => l.id === modifiedLayerId);
+  if (modifiedIdx === -1) {
+    compositeAndDisplay();
+    return;
+  }
+
+  // スマート・ダーティ判定（賢いキャッシュ無効化）
+  if (modifiedIdx < startIdx) {
+    updateLowerCache(startIdx - 1);
+  } else if (modifiedIdx > endIdx) {
+    updateUpperCache(endIdx + 1);
+  } else {
+    // アクティブグループ内の変更は、下位・上位いずれのキャッシュも再計算不要！
+  }
+
+  displayCtx.setTransform(1, 0, 0, 1, 0, 0);
+  displayCtx.globalCompositeOperation = 'source-over';
+
+  if (lowerCacheCanvas) {
+    displayCtx.drawImage(lowerCacheCanvas, 0, 0);
+  } else {
+    displayCtx.fillStyle = '#ffffff';
+    displayCtx.fillRect(0, 0, displayCanvas.width, displayCanvas.height);
+  }
+
+  if (startIdx <= endIdx) {
+    compositeLayerRange(displayCtx, startIdx, endIdx);
+  }
+
+  if (upperCacheCanvas && endIdx + 1 < layers.length) {
+    displayCtx.drawImage(upperCacheCanvas, 0, 0);
+  }
+
+  displayCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+}
+
 export function updateViewTransform() {
   canvasWrapper.style.transform = `translate(${viewOffsetX}px, ${viewOffsetY}px) scale(${viewScale}) rotate(${viewRotation}rad)`;
 }

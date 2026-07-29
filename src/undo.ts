@@ -1,7 +1,7 @@
 import type { Layer, UndoEntry } from './types';
 import { layers, activeLayerId, setActiveLayerId, nextLayerId, setNextLayerId, undoStack, redoStack, MAX_UNDO, setHasUnsavedChanges } from './state';
 import { undoToastEl } from './dom';
-import { createLayerCanvas, compositeAndDisplay } from './canvas';
+import { createLayerCanvas, compositeAndDisplay, compositeSmart } from './canvas';
 
 // Forward declaration - will be set by layers.ts to avoid circular dependency
 let _renderLayerList: () => void = () => {};
@@ -125,7 +125,11 @@ export function performUndo() {
     }
   }
 
-  compositeAndDisplay();
+  if (entry.type === 'stroke') {
+    compositeSmart(entry.layerId);
+  } else {
+    compositeAndDisplay();
+  }
   showToast('Undo');
 }
 
@@ -233,7 +237,11 @@ export function performRedo() {
     }
   }
 
-  compositeAndDisplay();
+  if (entry.type === 'stroke') {
+    compositeSmart(entry.layerId);
+  } else {
+    compositeAndDisplay();
+  }
   showToast('Redo');
 }
 

@@ -58,10 +58,10 @@ graph TD
 ### 3.1 描画のフロー
 1. ユーザーが画面にタッチ/クリックする (`input.ts`)
 2. 座標が論理キャンバス座標に変換され、描画状態が記録される (`undo.ts`)
-3. `PointerMove` イベントでスムージングアルゴリズムが座標を計算 (`drawing.ts`)
-4. アクティブなレイヤーの Canvas context に線分を描画 (`drawing.ts`)
+3. `PointerMove` イベント発火時、OS が高頻度サンプリングした中間座標 (`e.getCoalescedEvents()`) をすべて展開して取得し、各座標ごとにスムージング (`smootherProcessPoint`) と補間ステップ描画 (`smootherTick`) を即時実行します (`input.ts`, `drawing.ts`)
+4. アクティブなレイヤーの Canvas context に微細なセグメントを連続して描画し、高速描画時でも角張らない滑らかな曲線を実現します (`drawing.ts`)
 5. 描画ストロークおよびレイヤー移動中のホットパスにおいては **`compositeFast()`** が呼ばれ、事前に構築された「下位キャッシュ (`lowerCacheCanvas`)」と「上位キャッシュ (`upperCacheCanvas`)」、および「現在のアクティブクリッピンググループ」のみが合成されてディスプレイの Canvas に超高速転送されます。この際、前回キャッシュを生成した時点のアクティブグループ範囲 (`lastCachedRange`) と現在のアクティブグループ範囲が異なる場合は、自動的にダーティフラグ (`isLayerCacheDirty = true`) が立ち、上下キャッシュの再生成が行われます。
-6. レイヤーの選択変更（パレットでのクリック）・追加・削除・Undo/Redo 等の構成変更時は **`compositeAndDisplay()`** が呼ばれ、直ちにキャッシュと表示が更新されます。
+6. レイヤーの選択変更・追加・削除等の構成変更時は **`compositeAndDisplay()`** が呼ばれ、全キャッシュが再構築されます。ストローク描画の Undo/Redo 時には **`compositeSmart(modifiedLayerId)`** が呼ばれ、変更レイヤーが現在のアクティブグループ内にある場合は上下キャッシュの再計算を完全スキップし、一瞬で表示を反映します。
 
 ### 3.2 保存のフロー (Cloud-First & Fallback Local Safety)
 * **Google ドライブ接続時**: ローカルストレージ (`localStorage` 上限約 5MB) を圧迫しないよう、平常時は Google ドライブ上にのみ保存 (`saveToDrive`) します。API のトークン期限切れ時は `gdrive.ts` のセルフヒールにより自動的に再取得と再試行を行います。
@@ -69,7 +69,7 @@ graph TD
 
 ### 3.3 Undo/Redo のフロー
 * **記録**: アクションが発生する直前に、対象レイヤーの `ImageData` や状態をコピーし、`undoStack` にPushします。
-* **復元**: 2本指タップやCtrl+Zで `performUndo()` が呼ばれると、`undoStack` からエントリを取り出し、現在の状態を `redoStack` に保存した上で、過去の `ImageData` やレイヤー状態を復元し、再描画します。
+* **復元**: 2本指タップやCtrl+Zで `performUndo()` が呼ばれると、`undoStack` からエントリを取り出し、過去の `ImageData` やレイヤー状態を復元します。ストローク操作 (`type: 'stroke'`) の Undo/Redo は **`compositeSmart(layerId)`** を呼び出すことで、現在のアクティブグループ内の変更であれば \(O(0)\)（上下キャッシュ再構築なし）で超高速反映します。
 
 ## 4. 今後の開発に向けたガイドライン
 

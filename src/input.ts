@@ -1,6 +1,6 @@
 import { activeTouchPointers, drawingPointerId, setDrawingPointerId, isDrawing, setIsDrawing, viewScale, viewOffsetX, viewOffsetY, viewRotation, setViewScale, setViewOffsetX, setViewOffsetY, setViewRotation, initialPinchDistance, initialPinchAngle, initialViewScale, initialViewRotation, initialPinchCenter, initialViewOffset, setInitialPinchDistance, setInitialPinchAngle, setInitialViewScale, setInitialViewRotation, setInitialPinchCenter, setInitialViewOffset, tapRecords, setTapRecords, TAP_MAX_DURATION, TAP_MAX_DISTANCE, isLayerMoveMode } from './state';
 import { container } from './dom';
-import { getCanvasPoint, smootherReset, smootherProcessPoint } from './drawing';
+import { getCanvasPoint, smootherReset, smootherProcessPoint, smootherTick } from './drawing';
 import { saveUndoState, performUndo, performRedo, pushUndo } from './undo';
 import { updateViewTransform, compositeAndDisplay, compositeFast } from './canvas';
 import { getActiveLayer } from './layers';
@@ -320,7 +320,11 @@ export function initInputListeners() {
       }
     } else if (e.pointerType === 'pen' || e.pointerType === 'mouse') {
       if (drawingPointerId === e.pointerId && isDrawing) {
-        smootherProcessPoint(getCanvasPoint(e.clientX, e.clientY));
+        const events = typeof e.getCoalescedEvents === 'function' ? e.getCoalescedEvents() : [e];
+        for (const ev of events) {
+          smootherProcessPoint(getCanvasPoint(ev.clientX, ev.clientY));
+          smootherTick();
+        }
       }
     }
   });
