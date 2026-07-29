@@ -279,6 +279,7 @@ export function renderLayerList() {
     item.addEventListener('click', () => {
       setActiveLayerId(layer.id);
       renderLayerList();
+      compositeAndDisplay();
     });
 
     layerListEl.appendChild(item);

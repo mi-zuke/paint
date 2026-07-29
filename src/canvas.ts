@@ -35,9 +35,13 @@ export let lowerCacheCtx: CanvasRenderingContext2D | null = null;
 export let upperCacheCanvas: HTMLCanvasElement | null = null;
 export let upperCacheCtx: CanvasRenderingContext2D | null = null;
 export let isLayerCacheDirty = true;
+let lastCachedRange: [number, number] | null = null;
 
 export function setLayerCacheDirty(dirty: boolean = true) {
   isLayerCacheDirty = dirty;
+  if (dirty) {
+    lastCachedRange = null;
+  }
 }
 
 export function initCanvasSize(w: number, h: number) {
@@ -76,7 +80,7 @@ export function initCanvasSize(w: number, h: number) {
   upperCacheCanvas.height = h * dpr;
 
   displayCtx.scale(dpr, dpr);
-  isLayerCacheDirty = true;
+  setLayerCacheDirty(true);
 }
 
 export function getActiveGroupRange(): [number, number] {
@@ -196,9 +200,14 @@ export function compositeFast() {
 
   const [startIdx, endIdx] = getActiveGroupRange();
 
+  if (!lastCachedRange || lastCachedRange[0] !== startIdx || lastCachedRange[1] !== endIdx) {
+    isLayerCacheDirty = true;
+  }
+
   if (isLayerCacheDirty) {
     updateLowerCache(startIdx - 1);
     updateUpperCache(endIdx + 1);
+    lastCachedRange = [startIdx, endIdx];
     isLayerCacheDirty = false;
   }
 

@@ -60,8 +60,8 @@ graph TD
 2. 座標が論理キャンバス座標に変換され、描画状態が記録される (`undo.ts`)
 3. `PointerMove` イベントでスムージングアルゴリズムが座標を計算 (`drawing.ts`)
 4. アクティブなレイヤーの Canvas context に線分を描画 (`drawing.ts`)
-5. 描画ストロークおよびレイヤー移動中のホットパスにおいては **`compositeFast()`** が呼ばれ、事前に構築された「下位キャッシュ (`lowerCacheCanvas`)」と「上位キャッシュ (`upperCacheCanvas`)」、および「現在のアクティブクリッピンググループ」のみが合成されてディスプレイの Canvas に超高速転送されます。
-6. レイヤーの選択変更・追加・削除・Undo/Redo 等の構成変更時は **`compositeAndDisplay()`** が呼ばれ、キャッシュが再構築されます。
+5. 描画ストロークおよびレイヤー移動中のホットパスにおいては **`compositeFast()`** が呼ばれ、事前に構築された「下位キャッシュ (`lowerCacheCanvas`)」と「上位キャッシュ (`upperCacheCanvas`)」、および「現在のアクティブクリッピンググループ」のみが合成されてディスプレイの Canvas に超高速転送されます。この際、前回キャッシュを生成した時点のアクティブグループ範囲 (`lastCachedRange`) と現在のアクティブグループ範囲が異なる場合は、自動的にダーティフラグ (`isLayerCacheDirty = true`) が立ち、上下キャッシュの再生成が行われます。
+6. レイヤーの選択変更（パレットでのクリック）・追加・削除・Undo/Redo 等の構成変更時は **`compositeAndDisplay()`** が呼ばれ、直ちにキャッシュと表示が更新されます。
 
 ### 3.2 保存のフロー (Cloud-First & Fallback Local Safety)
 * **Google ドライブ接続時**: ローカルストレージ (`localStorage` 上限約 5MB) を圧迫しないよう、平常時は Google ドライブ上にのみ保存 (`saveToDrive`) します。API のトークン期限切れ時は `gdrive.ts` のセルフヒールにより自動的に再取得と再試行を行います。
