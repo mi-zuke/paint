@@ -8,7 +8,7 @@ import { startScreen, paintApp, btnNewCanvas, storageInfoEl, savedCanvasesListEl
 import { initCanvasSize, compositeAndDisplay, updateViewTransform, createLayerCanvas, generateThumbnail, exportCompositeCanvas } from './canvas';
 import { addLayerInternal, getActiveLayer, renderLayerList, initLayerListeners } from './layers';
 import { showToast } from './undo';
-// import { initDebugGraph } from './debug_graph';
+import { initDebugGraph } from './debug_graph';
 import { updateColorDisplay, resetToolToPen, initDrawingListeners } from './drawing';
 import { initInputListeners } from './input';
 import { getGDriveIndex, saveGDriveIndex, generateNewCanvasIdAsync, initGDriveListeners, setRenderStartScreenCallback } from './gdrive-ui';
@@ -453,5 +453,5 @@ window.addEventListener('beforeunload', (e) => {
   }
 });
 
-// デバッグ用：描画・取得点数リアルタイムフレームグラフを初期化（一時的にオフ）
-// initDebugGraph();
+// デバッグ用：描画・取得点数リアルタイムフレームグラフを初期化
+initDebugGraph();
