@@ -58,8 +58,8 @@ graph TD
 ### 3.1 描画のフロー
 1. ユーザーが画面にタッチ/クリックする (`input.ts`)
 2. 座標が論理キャンバス座標に変換され、描画状態が記録される (`undo.ts`)
-3. `PointerMove` イベント発火時、OS が高頻度サンプリングした中間座標 (`e.getCoalescedEvents()`) をすべて展開して取得し、各座標ごとにスムージング (`smootherProcessPoint`) と補間ステップ描画 (`smootherTick`) を即時実行します (`input.ts`, `drawing.ts`)
-4. アクティブなレイヤーの Canvas context に微細なセグメントを連続して描画し、高速描画時でも角張らない滑らかな曲線を実現します (`drawing.ts`)
+3. `PointerMove` イベント発火時、OS が高頻度サンプリングした中間座標 (`e.getCoalescedEvents()`) を展開し、各点間の移動距離が定数 X ピクセル (`MAX_POINT_DISTANCE_X = 4.0px`) 以下になるように自動で分割・決定してリサンプリング (`processResampledPoints`) を行います (`input.ts`, `drawing.ts`)
+4. 決定された等間隔ピッチのパスをたどってアクティブレイヤーに描画し、どれだけ高速に動かしてもカクカクせず一様な密度の美しい曲線を実現します (`drawing.ts`)
 5. 描画ストロークおよびレイヤー移動中のホットパスにおいては **`compositeFast()`** が呼ばれ、事前に構築された「下位キャッシュ (`lowerCacheCanvas`)」と「上位キャッシュ (`upperCacheCanvas`)」、および「現在のアクティブクリッピンググループ」のみが合成されてディスプレイの Canvas に超高速転送されます。この際、前回キャッシュを生成した時点のアクティブグループ範囲 (`lastCachedRange`) と現在のアクティブグループ範囲が異なる場合は、自動的にダーティフラグ (`isLayerCacheDirty = true`) が立ち、上下キャッシュの再生成が行われます。
 6. レイヤーの選択変更・追加・削除等の構成変更時は **`compositeAndDisplay()`** が呼ばれ、全キャッシュが再構築されます。ストローク描画の Undo/Redo 時には **`compositeSmart(modifiedLayerId)`** が呼ばれ、変更レイヤーが現在のアクティブグループ内にある場合は上下キャッシュの再計算を完全スキップし、一瞬で表示を反映します。
 
