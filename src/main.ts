@@ -8,6 +8,7 @@ import { startScreen, paintApp, btnNewCanvas, storageInfoEl, savedCanvasesListEl
 import { initCanvasSize, compositeAndDisplay, updateViewTransform, createLayerCanvas, generateThumbnail, exportCompositeCanvas } from './canvas';
 import { addLayerInternal, getActiveLayer, renderLayerList, initLayerListeners } from './layers';
 import { showToast } from './undo';
+// import { initDebugGraph } from './debug_graph';
 import { updateColorDisplay, resetToolToPen, initDrawingListeners } from './drawing';
 import { initInputListeners } from './input';
 import { getGDriveIndex, saveGDriveIndex, generateNewCanvasIdAsync, initGDriveListeners, setRenderStartScreenCallback } from './gdrive-ui';
@@ -449,6 +450,8 @@ window.addEventListener('beforeunload', (e) => {
   if (isGDriveWriting) {
     e.preventDefault();
     e.returnValue = 'Google ドライブとの通信処理（書き込み）中です。ページを離れるとデータが破損する可能性があります。';
-    return e.returnValue;
   }
 });
+
+// デバッグ用：描画・取得点数リアルタイムフレームグラフを初期化（一時的にオフ）
+// initDebugGraph();

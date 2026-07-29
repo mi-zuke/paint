@@ -5,6 +5,7 @@ import { colorPreview, colorInput, sizeSlider, sizeValEl, stabSlider, stabValEl,
 import { compositeAndDisplay, compositeFast } from './canvas';
 import { saveUndoState, showToast } from './undo';
 import { updateLayerMoveBtnUI } from './layers';
+import { addDrawnPointsCount } from './debug_graph';
 
 // ===================================================================
 // Color helpers
@@ -103,6 +104,15 @@ function getWaveFactor(d: number): number {
   return Math.max(0.15, 1.0 + penWaveAmp * w);
 }
 
+let needComposite = false;
+export function setNeedComposite(val = true) { needComposite = val; }
+export function flushComposite() {
+  if (needComposite) {
+    compositeFast();
+    needComposite = false;
+  }
+}
+
 export function drawSegment(from: Point, to: Point) {
   const layer = getActiveLayer();
   if (!layer) return;
@@ -111,53 +121,30 @@ export function drawSegment(from: Point, to: Point) {
   const dx = to.x - from.x;
   const dy = to.y - from.y;
   const segmentDist = Math.sqrt(dx * dx + dy * dy);
+  if (segmentDist < 0.01) return;
 
-  if (currentTool === 'eraser' || penWaveAmp <= 0 || segmentDist < 0.1) {
-    ctx.beginPath();
-    ctx.moveTo(from.x, from.y);
-    ctx.lineTo(to.x, to.y);
+  strokeDistance += segmentDist;
 
-    if (currentTool === 'eraser') {
-      ctx.globalCompositeOperation = 'destination-out';
-      ctx.strokeStyle = 'rgba(0,0,0,1)';
-      ctx.lineWidth = currentSize * 2;
-    } else {
-      ctx.globalCompositeOperation = 'source-over';
-      ctx.strokeStyle = currentColor;
-      ctx.lineWidth = currentSize * getWaveFactor(strokeDistance);
-    }
+  ctx.beginPath();
+  ctx.moveTo(from.x, from.y);
+  ctx.lineTo(to.x, to.y);
 
-    ctx.lineCap = 'round';
-    ctx.lineJoin = 'round';
-    ctx.stroke();
+  if (currentTool === 'eraser') {
+    ctx.globalCompositeOperation = 'destination-out';
+    ctx.strokeStyle = 'rgba(0,0,0,1)';
+    ctx.lineWidth = currentSize * 2;
   } else {
     ctx.globalCompositeOperation = 'source-over';
     ctx.strokeStyle = currentColor;
-    ctx.lineCap = 'round';
-    ctx.lineJoin = 'round';
-
-    const steps = Math.max(1, Math.ceil(segmentDist / 2));
-    let prevP = from;
-    for (let i = 1; i <= steps; i++) {
-      const t = i / steps;
-      const nextP = { x: from.x + dx * t, y: from.y + dy * t };
-      const stepLen = segmentDist / steps;
-      strokeDistance += stepLen;
-
-      const factor = getWaveFactor(strokeDistance);
-      const size = currentSize * factor;
-
-      ctx.beginPath();
-      ctx.moveTo(prevP.x, prevP.y);
-      ctx.lineTo(nextP.x, nextP.y);
-      ctx.lineWidth = size;
-      ctx.stroke();
-      prevP = nextP;
-    }
+    ctx.lineWidth = currentSize * getWaveFactor(strokeDistance);
   }
 
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  ctx.stroke();
+
   ctx.globalCompositeOperation = 'source-over';
-  compositeFast();
+  needComposite = true;
 }
 
 // ===================================================================
@@ -209,6 +196,7 @@ export function processResampledPoints(nextP: Point) {
     prevSamplePoint = { x: nextP.x, y: nextP.y };
     smootherProcessPoint(nextP);
     smootherTick();
+    addDrawnPointsCount(1);
     return;
   }
 
@@ -218,6 +206,7 @@ export function processResampledPoints(nextP: Point) {
 
   // 点同士の距離が定数 MAX_POINT_DISTANCE_X ピクセル以下になるようにステップ数を算出
   const steps = Math.max(1, Math.ceil(dist / MAX_POINT_DISTANCE_X));
+  addDrawnPointsCount(steps);
   for (let i = 1; i <= steps; i++) {
     const t = i / steps;
     const p = {
@@ -330,6 +319,10 @@ export function initDrawingListeners() {
   // Start animation loop
   function tick() {
     smootherTick();
+    if (needComposite) {
+      compositeFast();
+      needComposite = false;
+    }
     requestAnimationFrame(tick);
   }
   requestAnimationFrame(tick);

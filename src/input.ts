@@ -1,9 +1,10 @@
 import { activeTouchPointers, drawingPointerId, setDrawingPointerId, isDrawing, setIsDrawing, viewScale, viewOffsetX, viewOffsetY, viewRotation, setViewScale, setViewOffsetX, setViewOffsetY, setViewRotation, initialPinchDistance, initialPinchAngle, initialViewScale, initialViewRotation, initialPinchCenter, initialViewOffset, setInitialPinchDistance, setInitialPinchAngle, setInitialViewScale, setInitialViewRotation, setInitialPinchCenter, setInitialViewOffset, tapRecords, setTapRecords, TAP_MAX_DURATION, TAP_MAX_DISTANCE, isLayerMoveMode } from './state';
 import { container } from './dom';
-import { getCanvasPoint, smootherReset, processResampledPoints } from './drawing';
+import { getCanvasPoint, smootherReset, processResampledPoints, flushComposite } from './drawing';
 import { saveUndoState, performUndo, performRedo, pushUndo } from './undo';
 import { updateViewTransform, compositeAndDisplay, compositeFast } from './canvas';
 import { getActiveLayer } from './layers';
+import { addReceivedPointsCount } from './debug_graph';
 
 // ===================================================================
 // Tap Detection (2-finger undo, 3-finger redo)
@@ -239,6 +240,7 @@ function handlePointerUp(e: PointerEvent) {
       if (isDrawing) {
         setIsDrawing(false);
         smootherReset();
+        flushComposite();
       }
     }
   }
@@ -285,6 +287,7 @@ export function initInputListeners() {
         if (layer) saveUndoState(layer.id);
         setIsDrawing(true);
         smootherReset();
+        addReceivedPointsCount(1);
         processResampledPoints(getCanvasPoint(e.clientX, e.clientY));
       }
     }
@@ -321,6 +324,7 @@ export function initInputListeners() {
     } else if (e.pointerType === 'pen' || e.pointerType === 'mouse') {
       if (drawingPointerId === e.pointerId && isDrawing) {
         const events = typeof e.getCoalescedEvents === 'function' ? e.getCoalescedEvents() : [e];
+        addReceivedPointsCount(events.length);
         for (const ev of events) {
           processResampledPoints(getCanvasPoint(ev.clientX, ev.clientY));
         }
