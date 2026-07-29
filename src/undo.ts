@@ -112,9 +112,13 @@ export function performUndo() {
         redoStack.push({
           type: 'toggleClip',
           layerId: entry.layerId,
-          clipped: layer.clipped
+          clipped: layer.clipped,
+          blendMode: layer.blendMode
         });
         layer.clipped = entry.clipped;
+        if (entry.blendMode) {
+          layer.blendMode = entry.blendMode;
+        }
         _renderLayerList();
       }
       break;
@@ -216,9 +220,13 @@ export function performRedo() {
         undoStack.push({
           type: 'toggleClip',
           layerId: entry.layerId,
-          clipped: layer.clipped
+          clipped: layer.clipped,
+          blendMode: layer.blendMode
         });
         layer.clipped = entry.clipped;
+        if (entry.blendMode) {
+          layer.blendMode = entry.blendMode;
+        }
         _renderLayerList();
       }
       break;

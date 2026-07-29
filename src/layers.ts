@@ -386,6 +386,9 @@ export function initLayerListeners() {
     const idx = layers.indexOf(activeLayer);
     if (idx === 0) return;
     
+    const prevClipped = activeLayer.clipped;
+    const prevBlendMode = activeLayer.blendMode;
+
     activeLayer.clipped = !activeLayer.clipped;
     if (!activeLayer.clipped && activeLayer.blendMode === 'multiply') {
       activeLayer.blendMode = 'source-over';
@@ -394,7 +397,8 @@ export function initLayerListeners() {
     pushUndo({
       type: 'toggleClip',
       layerId: activeLayer.id,
-      clipped: activeLayer.clipped
+      clipped: prevClipped,
+      blendMode: prevBlendMode
     });
     
     renderLayerList();

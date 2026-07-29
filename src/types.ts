@@ -50,6 +50,7 @@ export interface ToggleClipUndoEntry {
   type: 'toggleClip';
   layerId: number;
   clipped: boolean;
+  blendMode?: 'source-over' | 'multiply';
 }
 
 export type UndoEntry = StrokeUndoEntry | AddLayerUndoEntry | DeleteLayerUndoEntry | ReorderLayersUndoEntry | ToggleClipUndoEntry;
