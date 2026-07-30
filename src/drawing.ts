@@ -172,14 +172,11 @@ export function getCanvasPoint(clientX: number, clientY: number): Point {
 // ===================================================================
 // 点同士の距離が定数 X ピクセル以下になるようにたどる基準距離 (px)
 export const MAX_POINT_DISTANCE_X = 4.0;
-let prevSamplePoint: Point | null = null;
-
 export function smootherReset() {
   setAnchorPoint(null);
   setLastInputPoint(null);
   setLastRenderPos(null);
   setLastInputTime(0);
-  prevSamplePoint = null;
 
   strokeDistance = 0;
   const baseFreq = (2 * Math.PI) / (penWavePeriod || 150);
@@ -192,32 +189,9 @@ export function smootherReset() {
 }
 
 export function processResampledPoints(nextP: Point) {
-  if (!prevSamplePoint) {
-    prevSamplePoint = { x: nextP.x, y: nextP.y };
-    smootherProcessPoint(nextP);
-    smootherTick();
-    addDrawnPointsCount(1);
-    return;
-  }
-
-  const dx = nextP.x - prevSamplePoint.x;
-  const dy = nextP.y - prevSamplePoint.y;
-  const dist = Math.sqrt(dx * dx + dy * dy);
-
-  // 点同士の距離が定数 MAX_POINT_DISTANCE_X ピクセル以下になるようにステップ数を算出
-  const steps = Math.max(1, Math.ceil(dist / MAX_POINT_DISTANCE_X));
-  addDrawnPointsCount(steps);
-  for (let i = 1; i <= steps; i++) {
-    const t = i / steps;
-    const p = {
-      x: prevSamplePoint.x + dx * t,
-      y: prevSamplePoint.y + dy * t
-    };
-    smootherProcessPoint(p);
-    smootherTick();
-  }
-
-  prevSamplePoint = { x: nextP.x, y: nextP.y };
+  smootherProcessPoint(nextP);
+  smootherTick();
+  addDrawnPointsCount(1);
 }
 
 export function smootherProcessPoint(p: Point) {
