@@ -1,6 +1,6 @@
 import Color from 'colorjs.io';
 import type { Point } from './types';
-import { currentTool, currentColor, setCurrentColor, currentSize, setCurrentSize, setCurrentTool, isDrawing, anchorPoint, lastInputPoint, lastRenderPos, lazyRadius, setAnchorPoint, setLastInputPoint, setLastRenderPos, setLastInputTime, setLazyRadius, layers, activeLayerId, canvasLogicalW, canvasLogicalH, viewScale, viewOffsetX, viewOffsetY, viewRotation, penWaveAmp, penWavePeriod, setPenWaveAmp, setPenWavePeriod, isLayerMoveMode, setIsLayerMoveMode, minPointDistance, strokeCanvas, strokeCtx } from './state';
+import { currentTool, currentColor, setCurrentColor, currentSize, setCurrentSize, setCurrentTool, isDrawing, anchorPoint, lastInputPoint, lastRenderPos, lastInputTime, positionSmoothing, lazyRadius, setAnchorPoint, setLastInputPoint, setLastRenderPos, setLastInputTime, setLazyRadius, layers, activeLayerId, canvasLogicalW, canvasLogicalH, viewScale, viewOffsetX, viewOffsetY, viewRotation, penWaveAmp, penWavePeriod, setPenWaveAmp, setPenWavePeriod, isLayerMoveMode, setIsLayerMoveMode, strokeCanvas, strokeCtx } from './state';
 import { colorPreview, colorInput, sizeSlider, sizeValEl, stabSlider, stabValEl, btnToggleTool, container, penWaveAmpSlider, penWaveAmpValEl, penWavePeriodSlider, penWavePeriodValEl, lazyRadiusCursorEl } from './dom';
 import { compositeAndDisplay, compositeFast, clearStrokeCanvas, setLayerCacheDirty } from './canvas';
 import { saveUndoState, showToast } from './undo';
@@ -234,7 +234,7 @@ export function smootherReset() {
   clearStrokeCanvas();
 }
 
-export function processResampledPoints(nextP: Point, timeStamp?: number, isLastPoint: boolean = false) {
+export function processResampledPoints(nextP: Point, timeStamp?: number) {
   if (timeStamp !== undefined) {
     // タイムスタンプ逆転の排除 (iPad Safari / Apple Pencil 対策)
     if (lastProcessedTimestamp !== -1 && timeStamp < lastProcessedTimestamp) {
@@ -243,26 +243,19 @@ export function processResampledPoints(nextP: Point, timeStamp?: number, isLastP
     lastProcessedTimestamp = timeStamp;
   }
 
-  // 同一・ノイズ的重複座標の排除 (線が枝分かれ・がたがたになる原因を除去)
-  // ただし、届いた点の最後の点 (isLastPoint === true) は必ず描画する
-  if (!isLastPoint && lastInputPoint) {
-    const dx = nextP.x - lastInputPoint.x;
-    const dy = nextP.y - lastInputPoint.y;
-    if (dx * dx + dy * dy < minPointDistance * minPointDistance) {
-      return;
-    }
-  }
-
   smootherProcessPoint(nextP);
   smootherTick();
   addDrawnPointsCount(1);
 }
 
 export function getCurrentSmoothingFactor(): number {
-  const effectiveLazyRadius = lazyRadius / (viewScale || 1);
-  // ゴム紐半径を従来の2/3倍にした上で、平滑化係数は変更前 (0で1.0、最大で0.03) の滑らかな指数曲線と完全一致させる
-  const norm = effectiveLazyRadius / (200 * (2 / 3));
-  return Math.pow(0.03, norm);
+  const elapsed = performance.now() - lastInputTime;
+  let currentSmoothing = positionSmoothing;
+  if (elapsed > 40) {
+    const t = Math.min(1, (elapsed - 40) / 200);
+    currentSmoothing = positionSmoothing + (0.35 - positionSmoothing) * t;
+  }
+  return currentSmoothing;
 }
 
 export function smootherProcessPoint(p: Point) {
@@ -279,31 +272,21 @@ export function smootherProcessPoint(p: Point) {
 export function smootherTick() {
   if (!isDrawing || !anchorPoint || !lastInputPoint || !lastRenderPos) return;
 
+  const currentSmoothing = getCurrentSmoothingFactor();
+
   const ap = anchorPoint;
-  const target = lastInputPoint;
+  ap.x += (lastInputPoint.x - ap.x) * currentSmoothing;
+  ap.y += (lastInputPoint.y - ap.y) * currentSmoothing;
+
+  const adx = lastInputPoint.x - ap.x;
+  const ady = lastInputPoint.y - ap.y;
+  const adist = Math.sqrt(adx * adx + ady * ady);
+
   const effectiveLazyRadius = lazyRadius / (viewScale || 1);
-
-  if (effectiveLazyRadius <= 0.1) {
-    // 手ぶれ補正0: 座標オーバーシュートやワープによる線の枝分かれ・三角形化を完全に防ぎ、正確に目標点へ移動
-    ap.x = target.x;
-    ap.y = target.y;
-  } else {
-    // 手ぶれ補正あり: ワープ衝突による「がたがた」を防ぐ、滑らかで安定した指数平滑追尾
-    // lazyRadius に応じて平滑化率を調整し、かつ目標との距離に応じて自然に引き寄せる
-    const smoothingFactor = getCurrentSmoothingFactor();
-    ap.x += (target.x - ap.x) * smoothingFactor;
-    ap.y += (target.y - ap.y) * smoothingFactor;
-
-    const dx = target.x - ap.x;
-    const dy = target.y - ap.y;
-    const dist = Math.sqrt(dx * dx + dy * dy);
-    if (dist > effectiveLazyRadius) {
-      // 許容遅延半径を超えた分のみ穏やかに引き寄せる（ドカンとしたワープ段差を排除）
-      const excess = dist - effectiveLazyRadius;
-      const pull = excess / dist;
-      ap.x += dx * pull;
-      ap.y += dy * pull;
-    }
+  if (adist > effectiveLazyRadius) {
+    const pullRatio = (adist - effectiveLazyRadius) / adist;
+    ap.x += adx * pullRatio;
+    ap.y += ady * pullRatio;
   }
 
   const movedX = ap.x - lastRenderPos.x;
