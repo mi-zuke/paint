@@ -258,6 +258,13 @@ export function processResampledPoints(nextP: Point, timeStamp?: number, isLastP
   addDrawnPointsCount(1);
 }
 
+export function getCurrentSmoothingFactor(): number {
+  const effectiveLazyRadius = lazyRadius / (viewScale || 1);
+  // ゴム紐半径を従来の2/3倍にした上で、平滑化係数は変更前 (0で1.0、最大で0.03) の滑らかな指数曲線と完全一致させる
+  const norm = effectiveLazyRadius / (200 * (2 / 3));
+  return Math.pow(0.03, norm);
+}
+
 export function smootherProcessPoint(p: Point) {
   setLastInputTime(performance.now());
   if (!anchorPoint) {
@@ -283,7 +290,7 @@ export function smootherTick() {
   } else {
     // 手ぶれ補正あり: ワープ衝突による「がたがた」を防ぐ、滑らかで安定した指数平滑追尾
     // lazyRadius に応じて平滑化率を調整し、かつ目標との距離に応じて自然に引き寄せる
-    const smoothingFactor = Math.max(0.1, Math.min(0.85, 1.0 - (effectiveLazyRadius / 75)));
+    const smoothingFactor = getCurrentSmoothingFactor();
     ap.x += (target.x - ap.x) * smoothingFactor;
     ap.y += (target.y - ap.y) * smoothingFactor;
 
@@ -343,7 +350,7 @@ export function initDrawingListeners() {
 
   stabSlider.addEventListener('input', (e) => {
     const sliderVal = parseFloat((e.target as HTMLInputElement).value);
-    setLazyRadius(Math.round(sliderVal * 2));
+    setLazyRadius(Math.round(sliderVal * (4 / 3)));
     stabValEl.innerText = Math.round(sliderVal).toString();
     if (lazyRadiusCursorEl) {
       const diameter = Math.max(6, lazyRadius * 2);
