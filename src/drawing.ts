@@ -1,7 +1,7 @@
 import Color from 'colorjs.io';
 import type { Point } from './types';
-import { currentTool, currentColor, setCurrentColor, currentSize, setCurrentSize, setCurrentTool, isDrawing, anchorPoint, lastInputPoint, lastRenderPos, lazyRadius, setAnchorPoint, setLastInputPoint, setLastRenderPos, setLastInputTime, setLazyRadius, layers, activeLayerId, canvasLogicalW, canvasLogicalH, viewScale, viewOffsetX, viewOffsetY, viewRotation, penWaveAmp, penWavePeriod, setPenWaveAmp, setPenWavePeriod, isLayerMoveMode, setIsLayerMoveMode, minPointDistance, setMinPointDistance, strokeCanvas, strokeCtx } from './state';
-import { colorPreview, colorInput, sizeSlider, sizeValEl, stabSlider, stabValEl, btnToggleTool, container, penWaveAmpSlider, penWaveAmpValEl, penWavePeriodSlider, penWavePeriodValEl, lazyRadiusCursorEl, minDistSlider, minDistValEl } from './dom';
+import { currentTool, currentColor, setCurrentColor, currentSize, setCurrentSize, setCurrentTool, isDrawing, anchorPoint, lastInputPoint, lastRenderPos, lazyRadius, setAnchorPoint, setLastInputPoint, setLastRenderPos, setLastInputTime, setLazyRadius, layers, activeLayerId, canvasLogicalW, canvasLogicalH, viewScale, viewOffsetX, viewOffsetY, viewRotation, penWaveAmp, penWavePeriod, setPenWaveAmp, setPenWavePeriod, isLayerMoveMode, setIsLayerMoveMode, minPointDistance, strokeCanvas, strokeCtx } from './state';
+import { colorPreview, colorInput, sizeSlider, sizeValEl, stabSlider, stabValEl, btnToggleTool, container, penWaveAmpSlider, penWaveAmpValEl, penWavePeriodSlider, penWavePeriodValEl, lazyRadiusCursorEl } from './dom';
 import { compositeAndDisplay, compositeFast, clearStrokeCanvas, setLayerCacheDirty } from './canvas';
 import { saveUndoState, showToast } from './undo';
 import { updateLayerMoveBtnUI } from './layers';
@@ -234,7 +234,7 @@ export function smootherReset() {
   clearStrokeCanvas();
 }
 
-export function processResampledPoints(nextP: Point, timeStamp?: number) {
+export function processResampledPoints(nextP: Point, timeStamp?: number, isLastPoint: boolean = false) {
   if (timeStamp !== undefined) {
     // タイムスタンプ逆転の排除 (iPad Safari / Apple Pencil 対策)
     if (lastProcessedTimestamp !== -1 && timeStamp < lastProcessedTimestamp) {
@@ -244,7 +244,8 @@ export function processResampledPoints(nextP: Point, timeStamp?: number) {
   }
 
   // 同一・ノイズ的重複座標の排除 (線が枝分かれ・がたがたになる原因を除去)
-  if (lastInputPoint) {
+  // ただし、届いた点の最後の点 (isLastPoint === true) は必ず描画する
+  if (!isLastPoint && lastInputPoint) {
     const dx = nextP.x - lastInputPoint.x;
     const dy = nextP.y - lastInputPoint.y;
     if (dx * dx + dy * dy < minPointDistance * minPointDistance) {
@@ -349,13 +350,6 @@ export function initDrawingListeners() {
       lazyRadiusCursorEl.style.width = `${diameter}px`;
       lazyRadiusCursorEl.style.height = `${diameter}px`;
     }
-  });
-
-  minDistSlider.addEventListener('input', (e) => {
-    const sliderVal = parseFloat((e.target as HTMLInputElement).value);
-    const dist = sliderVal / 10;
-    setMinPointDistance(dist);
-    minDistValEl.innerText = dist.toFixed(1);
   });
 
   penWaveAmpSlider.addEventListener('input', (e) => {

@@ -153,11 +153,6 @@ app.innerHTML = `
         <input type="range" id="stab-slider" min="0" max="100" value="56" />
       </div>
 
-      <div class="tool-group slider-group" title="デバッグ用：極小距離と見なす長さ (px)">
-        <label>MinDist: <span id="min-dist-val">0.2</span>px</label>
-        <input type="range" id="min-dist-slider" min="0" max="50" value="2" step="1" />
-      </div>
-
       <div class="tool-group" style="position: relative;">
         <button id="btn-settings" class="icon-btn" title="Settings"><i data-lucide="settings"></i></button>
         <div id="settings-dropdown" class="settings-dropdown panel-card">
@@ -216,8 +211,6 @@ export const colorInput = document.getElementById('color-input') as HTMLInputEle
 
 export const stabSlider = document.getElementById('stab-slider') as HTMLInputElement;
 export const stabValEl = document.getElementById('stab-val') as HTMLSpanElement;
-export const minDistSlider = document.getElementById('min-dist-slider') as HTMLInputElement;
-export const minDistValEl = document.getElementById('min-dist-val') as HTMLSpanElement;
 
 export const btnAddLayer = document.getElementById('btn-add-layer') as HTMLButtonElement;
 export const btnActiveClip = document.getElementById('btn-active-clip') as HTMLButtonElement;

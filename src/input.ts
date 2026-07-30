@@ -302,7 +302,7 @@ export function initInputListeners() {
         setIsDrawing(true);
         smootherReset();
         addReceivedPointsCount(1);
-        processResampledPoints(getCanvasPoint(e.clientX, e.clientY), e.timeStamp);
+        processResampledPoints(getCanvasPoint(e.clientX, e.clientY), e.timeStamp, true);
       }
     }
   });
@@ -345,8 +345,10 @@ export function initInputListeners() {
         const rawEvents = typeof e.getCoalescedEvents === 'function' ? e.getCoalescedEvents() : [e];
         const events = rawEvents.slice().sort((a, b) => a.timeStamp - b.timeStamp);
         addReceivedPointsCount(events.length);
-        for (const ev of events) {
-          processResampledPoints(getCanvasPoint(ev.clientX, ev.clientY), ev.timeStamp);
+        for (let i = 0; i < events.length; i++) {
+          const ev = events[i];
+          const isLast = (i === events.length - 1);
+          processResampledPoints(getCanvasPoint(ev.clientX, ev.clientY), ev.timeStamp, isLast);
         }
       }
     }
