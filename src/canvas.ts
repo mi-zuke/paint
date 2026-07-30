@@ -44,10 +44,14 @@ export function setLayerCacheDirty(dirty: boolean = true) {
   }
 }
 
+export function getCanvasDPR(): number {
+  return Math.max(2, window.devicePixelRatio || 1);
+}
+
 export function initCanvasSize(w: number, h: number) {
   setCanvasLogicalW(w);
   setCanvasLogicalH(h);
-  const dpr = window.devicePixelRatio || 1;
+  const dpr = getCanvasDPR();
 
   displayCanvas.width = w * dpr;
   displayCanvas.height = h * dpr;
@@ -173,7 +177,7 @@ export function compositeAndDisplay() {
 }
 
 export function compositeFast() {
-  const dpr = window.devicePixelRatio || 1;
+  const dpr = getCanvasDPR();
   const gc = groupCanvas;
   const gctx = groupCtx;
   if (!gc || !gctx) {
@@ -233,7 +237,7 @@ export function compositeFast() {
 }
 
 export function compositeSmart(modifiedLayerId: number) {
-  const dpr = window.devicePixelRatio || 1;
+  const dpr = getCanvasDPR();
   const gc = groupCanvas;
   const gctx = groupCtx;
   if (!gc || !gctx) {
@@ -294,7 +298,7 @@ export function updateViewTransform() {
 
 export function createLayerCanvas(): { canvas: HTMLCanvasElement; ctx: CanvasRenderingContext2D } {
   const c = document.createElement('canvas');
-  const dpr = window.devicePixelRatio || 1;
+  const dpr = getCanvasDPR();
   c.width = canvasLogicalW * dpr;
   c.height = canvasLogicalH * dpr;
   const ctx = c.getContext('2d')!;
@@ -305,7 +309,7 @@ export function createLayerCanvas(): { canvas: HTMLCanvasElement; ctx: CanvasRen
 }
 
 export function exportCompositeCanvas(): HTMLCanvasElement {
-  const dpr = window.devicePixelRatio || 1;
+  const dpr = getCanvasDPR();
   const outCanvas = document.createElement('canvas');
   outCanvas.width = canvasLogicalW * dpr;
   outCanvas.height = canvasLogicalH * dpr;

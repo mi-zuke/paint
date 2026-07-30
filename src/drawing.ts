@@ -1,7 +1,7 @@
 import Color from 'colorjs.io';
 import type { Point } from './types';
 import { currentTool, currentColor, setCurrentColor, currentSize, setCurrentSize, setCurrentTool, isDrawing, anchorPoint, lastInputPoint, lastRenderPos, lazyRadius, setAnchorPoint, setLastInputPoint, setLastRenderPos, setLastInputTime, setLazyRadius, layers, activeLayerId, canvasLogicalW, canvasLogicalH, viewScale, viewOffsetX, viewOffsetY, viewRotation, penWaveAmp, penWavePeriod, setPenWaveAmp, setPenWavePeriod, isLayerMoveMode, setIsLayerMoveMode } from './state';
-import { colorPreview, colorInput, sizeSlider, sizeValEl, stabSlider, stabValEl, btnToggleTool, container, penWaveAmpSlider, penWaveAmpValEl, penWavePeriodSlider, penWavePeriodValEl } from './dom';
+import { colorPreview, colorInput, sizeSlider, sizeValEl, stabSlider, stabValEl, btnToggleTool, container, penWaveAmpSlider, penWaveAmpValEl, penWavePeriodSlider, penWavePeriodValEl, lazyRadiusCursorEl } from './dom';
 import { compositeAndDisplay, compositeFast } from './canvas';
 import { saveUndoState, showToast } from './undo';
 import { updateLayerMoveBtnUI } from './layers';
@@ -301,6 +301,11 @@ export function initDrawingListeners() {
     const sliderVal = parseFloat((e.target as HTMLInputElement).value);
     setLazyRadius(Math.round(12.5 * (Math.pow(3, sliderVal / 50) - 1)));
     stabValEl.innerText = lazyRadius.toString();
+    if (lazyRadiusCursorEl) {
+      const diameter = Math.max(6, lazyRadius * 2);
+      lazyRadiusCursorEl.style.width = `${diameter}px`;
+      lazyRadiusCursorEl.style.height = `${diameter}px`;
+    }
   });
 
   penWaveAmpSlider.addEventListener('input', (e) => {

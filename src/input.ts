@@ -1,8 +1,8 @@
-import { activeTouchPointers, drawingPointerId, setDrawingPointerId, isDrawing, setIsDrawing, viewScale, viewOffsetX, viewOffsetY, viewRotation, setViewScale, setViewOffsetX, setViewOffsetY, setViewRotation, initialPinchDistance, initialPinchAngle, initialViewScale, initialViewRotation, initialPinchCenter, initialViewOffset, setInitialPinchDistance, setInitialPinchAngle, setInitialViewScale, setInitialViewRotation, setInitialPinchCenter, setInitialViewOffset, tapRecords, setTapRecords, TAP_MAX_DURATION, TAP_MAX_DISTANCE, isLayerMoveMode } from './state';
-import { container } from './dom';
+import { activeTouchPointers, drawingPointerId, setDrawingPointerId, isDrawing, setIsDrawing, viewScale, viewOffsetX, viewOffsetY, viewRotation, setViewScale, setViewOffsetX, setViewOffsetY, setViewRotation, initialPinchDistance, initialPinchAngle, initialViewScale, initialViewRotation, initialPinchCenter, initialViewOffset, setInitialPinchDistance, setInitialPinchAngle, setInitialViewScale, setInitialViewRotation, setInitialPinchCenter, setInitialViewOffset, tapRecords, setTapRecords, TAP_MAX_DURATION, TAP_MAX_DISTANCE, isLayerMoveMode, lazyRadius } from './state';
+import { container, lazyRadiusCursorEl } from './dom';
 import { getCanvasPoint, smootherReset, processResampledPoints, flushComposite } from './drawing';
 import { saveUndoState, performUndo, performRedo, pushUndo } from './undo';
-import { updateViewTransform, compositeAndDisplay, compositeFast } from './canvas';
+import { updateViewTransform, compositeAndDisplay, compositeFast, getCanvasDPR } from './canvas';
 import { getActiveLayer } from './layers';
 import { addReceivedPointsCount } from './debug_graph';
 
@@ -148,7 +148,7 @@ function processLayerMove(clientX: number, clientY: number) {
   if (!isMovingActiveLayer || !moveOffscreenCanvas) return;
   const layer = getActiveLayer();
   if (!layer) return;
-  const dpr = window.devicePixelRatio || 1;
+  const dpr = getCanvasDPR();
   const pt = getCanvasPoint(clientX, clientY);
   const physDx = Math.round((pt.x - moveStartX) * dpr);
   const physDy = Math.round((pt.y - moveStartY) * dpr);
@@ -186,7 +186,7 @@ function cancelLayerMove() {
   isMovingActiveLayer = false;
   const layer = getActiveLayer();
   if (layer && moveOffscreenCanvas) {
-    const dpr = window.devicePixelRatio || 1;
+    const dpr = getCanvasDPR();
     layer.ctx.setTransform(1, 0, 0, 1, 0, 0);
     layer.ctx.clearRect(0, 0, layer.canvas.width, layer.canvas.height);
     const prevSmoothing = layer.ctx.imageSmoothingEnabled;
@@ -246,8 +246,21 @@ function handlePointerUp(e: PointerEvent) {
   }
 }
 
+function updateLazyRadiusCursor(e: PointerEvent) {
+  if (!lazyRadiusCursorEl) return;
+  if (e.pointerType === 'pen' || e.pointerType === 'mouse') {
+    const diameter = Math.max(6, lazyRadius * 2);
+    lazyRadiusCursorEl.style.width = `${diameter}px`;
+    lazyRadiusCursorEl.style.height = `${diameter}px`;
+    lazyRadiusCursorEl.style.left = `${e.clientX}px`;
+    lazyRadiusCursorEl.style.top = `${e.clientY}px`;
+    lazyRadiusCursorEl.style.display = 'block';
+  }
+}
+
 export function initInputListeners() {
   container.addEventListener('pointerdown', (e) => {
+    updateLazyRadiusCursor(e);
     if (isLayerMoveMode) {
       if (e.pointerType === 'touch') {
         activeTouchPointers.set(e.pointerId, e);
@@ -293,7 +306,12 @@ export function initInputListeners() {
     }
   });
 
+  container.addEventListener('pointerleave', () => {
+    if (lazyRadiusCursorEl) lazyRadiusCursorEl.style.display = 'none';
+  });
+
   container.addEventListener('pointermove', (e) => {
+    updateLazyRadiusCursor(e);
     if (isLayerMoveMode) {
       if (e.pointerType === 'touch') {
         if (activeTouchPointers.has(e.pointerId)) {
