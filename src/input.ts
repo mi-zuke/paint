@@ -288,7 +288,7 @@ export function initInputListeners() {
         setIsDrawing(true);
         smootherReset();
         addReceivedPointsCount(1);
-        processResampledPoints(getCanvasPoint(e.clientX, e.clientY));
+        processResampledPoints(getCanvasPoint(e.clientX, e.clientY), e.timeStamp);
       }
     }
   });
@@ -323,10 +323,11 @@ export function initInputListeners() {
       }
     } else if (e.pointerType === 'pen' || e.pointerType === 'mouse') {
       if (drawingPointerId === e.pointerId && isDrawing) {
-        const events = typeof e.getCoalescedEvents === 'function' ? e.getCoalescedEvents() : [e];
+        const rawEvents = typeof e.getCoalescedEvents === 'function' ? e.getCoalescedEvents() : [e];
+        const events = rawEvents.slice().sort((a, b) => a.timeStamp - b.timeStamp);
         addReceivedPointsCount(events.length);
         for (const ev of events) {
-          processResampledPoints(getCanvasPoint(ev.clientX, ev.clientY));
+          processResampledPoints(getCanvasPoint(ev.clientX, ev.clientY), ev.timeStamp);
         }
       }
     }
