@@ -1,7 +1,7 @@
 import Color from 'colorjs.io';
 import type { Point } from './types';
-import { currentTool, currentColor, setCurrentColor, currentSize, setCurrentSize, setCurrentTool, isDrawing, anchorPoint, lastInputPoint, lastRenderPos, lazyRadius, setAnchorPoint, setLastInputPoint, setLastRenderPos, setLastInputTime, setLazyRadius, layers, activeLayerId, canvasLogicalW, canvasLogicalH, viewScale, viewOffsetX, viewOffsetY, viewRotation, penWaveAmp, penWavePeriod, setPenWaveAmp, setPenWavePeriod, isLayerMoveMode, setIsLayerMoveMode } from './state';
-import { colorPreview, colorInput, sizeSlider, sizeValEl, stabSlider, stabValEl, btnToggleTool, container, penWaveAmpSlider, penWaveAmpValEl, penWavePeriodSlider, penWavePeriodValEl, lazyRadiusCursorEl } from './dom';
+import { currentTool, currentColor, setCurrentColor, currentSize, setCurrentSize, setCurrentTool, isDrawing, anchorPoint, lastInputPoint, lastRenderPos, lazyRadius, setAnchorPoint, setLastInputPoint, setLastRenderPos, setLastInputTime, setLazyRadius, layers, activeLayerId, canvasLogicalW, canvasLogicalH, viewScale, viewOffsetX, viewOffsetY, viewRotation, penWaveAmp, penWavePeriod, setPenWaveAmp, setPenWavePeriod, isLayerMoveMode, setIsLayerMoveMode, minPointDistance, setMinPointDistance } from './state';
+import { colorPreview, colorInput, sizeSlider, sizeValEl, stabSlider, stabValEl, btnToggleTool, container, penWaveAmpSlider, penWaveAmpValEl, penWavePeriodSlider, penWavePeriodValEl, lazyRadiusCursorEl, minDistSlider, minDistValEl } from './dom';
 import { compositeAndDisplay, compositeFast } from './canvas';
 import { saveUndoState, showToast } from './undo';
 import { updateLayerMoveBtnUI } from './layers';
@@ -204,7 +204,7 @@ export function processResampledPoints(nextP: Point, timeStamp?: number) {
   if (lastInputPoint) {
     const dx = nextP.x - lastInputPoint.x;
     const dy = nextP.y - lastInputPoint.y;
-    if (dx * dx + dy * dy < 0.04) {
+    if (dx * dx + dy * dy < minPointDistance * minPointDistance) {
       return;
     }
   }
@@ -306,6 +306,13 @@ export function initDrawingListeners() {
       lazyRadiusCursorEl.style.width = `${diameter}px`;
       lazyRadiusCursorEl.style.height = `${diameter}px`;
     }
+  });
+
+  minDistSlider.addEventListener('input', (e) => {
+    const sliderVal = parseFloat((e.target as HTMLInputElement).value);
+    const dist = sliderVal / 10;
+    setMinPointDistance(dist);
+    minDistValEl.innerText = dist.toFixed(1);
   });
 
   penWaveAmpSlider.addEventListener('input', (e) => {

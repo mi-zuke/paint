@@ -22,7 +22,9 @@ export function setPenWavePeriod(val: number) { penWavePeriod = val; }
 // StrokeSmoother parameters
 export const positionSmoothing = 0.07;
 export let lazyRadius = 30;
+export let minPointDistance = 0.2; // 単位: px (デバッグ用極小距離)
 export function setLazyRadius(r: number) { lazyRadius = r; }
+export function setMinPointDistance(d: number) { minPointDistance = d; }
 
 // View state
 export let viewScale = 1;
