@@ -150,7 +150,7 @@ app.innerHTML = `
 
       <div class="tool-group slider-group">
         <label>Stabilize: <span id="stab-val">30</span></label>
-        <input type="range" id="stab-slider" min="0" max="100" value="56" />
+        <input type="range" id="stab-slider" min="0" max="100" value="30" />
       </div>
 
       <div class="tool-group" style="position: relative;">

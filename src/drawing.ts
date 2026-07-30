@@ -343,8 +343,8 @@ export function initDrawingListeners() {
 
   stabSlider.addEventListener('input', (e) => {
     const sliderVal = parseFloat((e.target as HTMLInputElement).value);
-    setLazyRadius(Math.round(12.5 * (Math.pow(3, sliderVal / 50) - 1)));
-    stabValEl.innerText = lazyRadius.toString();
+    setLazyRadius(Math.round(sliderVal * 2));
+    stabValEl.innerText = Math.round(sliderVal).toString();
     if (lazyRadiusCursorEl) {
       const diameter = Math.max(6, lazyRadius * 2);
       lazyRadiusCursorEl.style.width = `${diameter}px`;
