@@ -116,3 +116,9 @@ export function setIsGDriveWriting(val: boolean) {
 export let hasUnsavedChanges = false;
 export function setHasUnsavedChanges(val: boolean) { hasUnsavedChanges = val; }
 
+// Stroke buffer canvas for clean blending without overlapping segment dots
+export let strokeCanvas: HTMLCanvasElement | null = null;
+export let strokeCtx: CanvasRenderingContext2D | null = null;
+export function setStrokeCanvas(c: HTMLCanvasElement | null) { strokeCanvas = c; }
+export function setStrokeCtx(ctx: CanvasRenderingContext2D | null) { strokeCtx = ctx; }
+

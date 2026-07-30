@@ -1,6 +1,6 @@
 import { activeTouchPointers, drawingPointerId, setDrawingPointerId, isDrawing, setIsDrawing, viewScale, viewOffsetX, viewOffsetY, viewRotation, setViewScale, setViewOffsetX, setViewOffsetY, setViewRotation, initialPinchDistance, initialPinchAngle, initialViewScale, initialViewRotation, initialPinchCenter, initialViewOffset, setInitialPinchDistance, setInitialPinchAngle, setInitialViewScale, setInitialViewRotation, setInitialPinchCenter, setInitialViewOffset, tapRecords, setTapRecords, TAP_MAX_DURATION, TAP_MAX_DISTANCE, isLayerMoveMode, lazyRadius } from './state';
 import { container, lazyRadiusCursorEl } from './dom';
-import { getCanvasPoint, smootherReset, processResampledPoints, flushComposite } from './drawing';
+import { getCanvasPoint, smootherReset, processResampledPoints, flushComposite, commitStrokeToLayer } from './drawing';
 import { saveUndoState, performUndo, performRedo, pushUndo } from './undo';
 import { updateViewTransform, compositeAndDisplay, compositeFast, getCanvasDPR } from './canvas';
 import { getActiveLayer } from './layers';
@@ -239,6 +239,7 @@ function handlePointerUp(e: PointerEvent) {
       setTapRecords([]);
       if (isDrawing) {
         setIsDrawing(false);
+        commitStrokeToLayer();
         smootherReset();
         flushComposite();
       }

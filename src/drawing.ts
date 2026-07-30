@@ -1,8 +1,8 @@
 import Color from 'colorjs.io';
 import type { Point } from './types';
-import { currentTool, currentColor, setCurrentColor, currentSize, setCurrentSize, setCurrentTool, isDrawing, anchorPoint, lastInputPoint, lastRenderPos, lazyRadius, setAnchorPoint, setLastInputPoint, setLastRenderPos, setLastInputTime, setLazyRadius, layers, activeLayerId, canvasLogicalW, canvasLogicalH, viewScale, viewOffsetX, viewOffsetY, viewRotation, penWaveAmp, penWavePeriod, setPenWaveAmp, setPenWavePeriod, isLayerMoveMode, setIsLayerMoveMode, minPointDistance, setMinPointDistance } from './state';
+import { currentTool, currentColor, setCurrentColor, currentSize, setCurrentSize, setCurrentTool, isDrawing, anchorPoint, lastInputPoint, lastRenderPos, lazyRadius, setAnchorPoint, setLastInputPoint, setLastRenderPos, setLastInputTime, setLazyRadius, layers, activeLayerId, canvasLogicalW, canvasLogicalH, viewScale, viewOffsetX, viewOffsetY, viewRotation, penWaveAmp, penWavePeriod, setPenWaveAmp, setPenWavePeriod, isLayerMoveMode, setIsLayerMoveMode, minPointDistance, setMinPointDistance, strokeCanvas, strokeCtx } from './state';
 import { colorPreview, colorInput, sizeSlider, sizeValEl, stabSlider, stabValEl, btnToggleTool, container, penWaveAmpSlider, penWaveAmpValEl, penWavePeriodSlider, penWavePeriodValEl, lazyRadiusCursorEl, minDistSlider, minDistValEl } from './dom';
-import { compositeAndDisplay, compositeFast } from './canvas';
+import { compositeAndDisplay, compositeFast, clearStrokeCanvas, setLayerCacheDirty } from './canvas';
 import { saveUndoState, showToast } from './undo';
 import { updateLayerMoveBtnUI } from './layers';
 import { addDrawnPointsCount } from './debug_graph';
@@ -113,10 +113,11 @@ export function flushComposite() {
   }
 }
 
+let currentStrokePoints: Point[] = [];
+
 export function drawSegment(from: Point, to: Point) {
   const layer = getActiveLayer();
   if (!layer) return;
-  const ctx = layer.ctx;
 
   const dx = to.x - from.x;
   const dy = to.y - from.y;
@@ -125,6 +126,30 @@ export function drawSegment(from: Point, to: Point) {
 
   strokeDistance += segmentDist;
 
+  // 通常ペンの場合：線分の継ぎ目で端点が重なって濃くなる現象を防ぐため、点列を単一パスとしてストロークバッファへ一括描画する
+  if (currentTool === 'pen' && penWaveAmp <= 0 && strokeCtx && strokeCanvas) {
+    if (currentStrokePoints.length === 0) {
+      currentStrokePoints.push(from);
+    }
+    currentStrokePoints.push(to);
+
+    clearStrokeCanvas();
+    strokeCtx.beginPath();
+    strokeCtx.moveTo(currentStrokePoints[0].x, currentStrokePoints[0].y);
+    for (let i = 1; i < currentStrokePoints.length; i++) {
+      strokeCtx.lineTo(currentStrokePoints[i].x, currentStrokePoints[i].y);
+    }
+    strokeCtx.lineCap = 'round';
+    strokeCtx.lineJoin = 'round';
+    strokeCtx.strokeStyle = currentColor;
+    strokeCtx.lineWidth = currentSize;
+    strokeCtx.stroke();
+
+    needComposite = true;
+    return;
+  }
+
+  const ctx = layer.ctx;
   ctx.beginPath();
   ctx.moveTo(from.x, from.y);
   ctx.lineTo(to.x, to.y);
@@ -145,6 +170,22 @@ export function drawSegment(from: Point, to: Point) {
 
   ctx.globalCompositeOperation = 'source-over';
   needComposite = true;
+}
+
+export function commitStrokeToLayer() {
+  if (currentStrokePoints.length === 0 || currentTool !== 'pen' || penWaveAmp > 0) {
+    return;
+  }
+  const layer = getActiveLayer();
+  if (!layer || !strokeCanvas) return;
+  layer.ctx.save();
+  layer.ctx.setTransform(1, 0, 0, 1, 0, 0);
+  layer.ctx.globalCompositeOperation = 'source-over';
+  layer.ctx.drawImage(strokeCanvas, 0, 0);
+  layer.ctx.restore();
+  currentStrokePoints = [];
+  clearStrokeCanvas();
+  setLayerCacheDirty(true);
 }
 
 // ===================================================================
@@ -189,6 +230,8 @@ export function smootherReset() {
   wavePhase1 = Math.random() * Math.PI * 2;
   wavePhase2 = Math.random() * Math.PI * 2;
   wavePhase3 = Math.random() * Math.PI * 2;
+  currentStrokePoints = [];
+  clearStrokeCanvas();
 }
 
 export function processResampledPoints(nextP: Point, timeStamp?: number) {

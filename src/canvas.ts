@@ -1,4 +1,4 @@
-import { canvasLogicalW, canvasLogicalH, setCanvasLogicalW, setCanvasLogicalH, layers, groupCanvas, groupCtx, setGroupCanvas, setGroupCtx, viewOffsetX, viewOffsetY, viewScale, viewRotation, activeLayerId } from './state';
+import { canvasLogicalW, canvasLogicalH, setCanvasLogicalW, setCanvasLogicalH, layers, groupCanvas, groupCtx, setGroupCanvas, setGroupCtx, viewOffsetX, viewOffsetY, viewScale, viewRotation, activeLayerId, strokeCanvas, strokeCtx, setStrokeCanvas, setStrokeCtx, isDrawing } from './state';
 import { displayCanvas, displayCtx, canvasWrapper } from './dom';
 
 export function generateThumbnail(sourceCanvas: HTMLCanvasElement, maxDim: number = 160): string {
@@ -83,8 +83,33 @@ export function initCanvasSize(w: number, h: number) {
   upperCacheCanvas.width = w * dpr;
   upperCacheCanvas.height = h * dpr;
 
+  let sc = strokeCanvas;
+  if (!sc) {
+    sc = document.createElement('canvas');
+    setStrokeCanvas(sc);
+  }
+  sc.width = w * dpr;
+  sc.height = h * dpr;
+  const sCtx = sc.getContext('2d')!;
+  sCtx.scale(dpr, dpr);
+  sCtx.lineCap = 'round';
+  sCtx.lineJoin = 'round';
+  setStrokeCtx(sCtx);
+
   displayCtx.scale(dpr, dpr);
   setLayerCacheDirty(true);
+}
+
+export function clearStrokeCanvas() {
+  const sc = strokeCanvas;
+  const sCtx = strokeCtx;
+  if (!sc || !sCtx) return;
+  const dpr = getCanvasDPR();
+  sCtx.setTransform(1, 0, 0, 1, 0, 0);
+  sCtx.clearRect(0, 0, sc.width, sc.height);
+  sCtx.scale(dpr, dpr);
+  sCtx.lineCap = 'round';
+  sCtx.lineJoin = 'round';
 }
 
 export function getActiveGroupRange(): [number, number] {
@@ -233,6 +258,10 @@ export function compositeFast() {
     displayCtx.drawImage(upperCacheCanvas, 0, 0);
   }
 
+  if (isDrawing && strokeCanvas) {
+    displayCtx.drawImage(strokeCanvas, 0, 0);
+  }
+
   displayCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
 }
 
@@ -250,25 +279,11 @@ export function compositeSmart(modifiedLayerId: number) {
   }
 
   const [startIdx, endIdx] = getActiveGroupRange();
-
-  if (!lastCachedRange || lastCachedRange[0] !== startIdx || lastCachedRange[1] !== endIdx) {
-    compositeAndDisplay();
-    return;
-  }
-
   const modifiedIdx = layers.findIndex(l => l.id === modifiedLayerId);
-  if (modifiedIdx === -1) {
+
+  if (modifiedIdx < startIdx || modifiedIdx > endIdx) {
     compositeAndDisplay();
     return;
-  }
-
-  // スマート・ダーティ判定（賢いキャッシュ無効化）
-  if (modifiedIdx < startIdx) {
-    updateLowerCache(startIdx - 1);
-  } else if (modifiedIdx > endIdx) {
-    updateUpperCache(endIdx + 1);
-  } else {
-    // アクティブグループ内の変更は、下位・上位いずれのキャッシュも再計算不要！
   }
 
   displayCtx.setTransform(1, 0, 0, 1, 0, 0);
@@ -287,6 +302,10 @@ export function compositeSmart(modifiedLayerId: number) {
 
   if (upperCacheCanvas && endIdx + 1 < layers.length) {
     displayCtx.drawImage(upperCacheCanvas, 0, 0);
+  }
+
+  if (isDrawing && strokeCanvas) {
+    displayCtx.drawImage(strokeCanvas, 0, 0);
   }
 
   displayCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
