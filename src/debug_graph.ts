@@ -1,9 +1,5 @@
-// 一時的なデバッグ用：描画した点数と取得した点数を比較するリアルタイムフレームグラフ
-import { getCurrentSmoothingFactor } from './drawing';
-
 let containerEl: HTMLDivElement | null = null;
 let canvasEl: HTMLCanvasElement | null = null;
-let smoothingInfoEl: HTMLDivElement | null = null;
 let ctx: CanvasRenderingContext2D | null = null;
 
 const HISTORY_LEN = 120;
@@ -48,10 +44,6 @@ export function initDebugGraph() {
 
   containerEl.appendChild(canvasEl);
 
-  smoothingInfoEl = document.createElement('div');
-  smoothingInfoEl.style.cssText = 'margin-top: 6px; border-top: 1px solid rgba(255, 255, 255, 0.2); padding-top: 4px; text-align: center; color: #38bdf8; font-weight: bold; font-size: 12px;';
-  containerEl.appendChild(smoothingInfoEl);
-
   document.body.appendChild(containerEl);
 
   ctx = canvasEl.getContext('2d');
@@ -76,11 +68,6 @@ function tickGraph() {
   currentDrawn = 0;
 
   drawGraph(lastRecvd, lastDrawn);
-
-  if (smoothingInfoEl) {
-    const factor = getCurrentSmoothingFactor();
-    smoothingInfoEl.textContent = `平滑化係数: ${factor.toFixed(3)}`;
-  }
 
   requestAnimationFrame(tickGraph);
 }

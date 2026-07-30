@@ -83,7 +83,6 @@ app.innerHTML = `
       <div id="canvas-wrapper">
         <canvas id="display-canvas"></canvas>
       </div>
-      <div id="lazy-radius-cursor" style="position: fixed; pointer-events: none; border: 1.5px dashed rgba(255, 60, 60, 0.85); background: rgba(255, 60, 60, 0.05); border-radius: 50%; display: none; z-index: 10000; transform: translate(-50%, -50%); box-shadow: 0 0 4px rgba(0,0,0,0.25); transition: width 0.05s ease, height 0.05s ease;"></div>
     </div>
 
 
@@ -224,4 +223,3 @@ export const undoToastEl = document.getElementById('undo-toast') as HTMLDivEleme
 export const btnBackToStart = document.getElementById('btn-back-to-start') as HTMLButtonElement;
 export const btnValidateFiles = document.getElementById('btn-validate-files') as HTMLButtonElement;
 export const btnClearStorage = document.getElementById('btn-clear-storage') as HTMLButtonElement;
-export const lazyRadiusCursorEl = document.getElementById('lazy-radius-cursor') as HTMLDivElement;
