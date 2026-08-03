@@ -15,8 +15,10 @@ export let isLayerMoveMode = false;
 export function setIsLayerMoveMode(m: boolean) { isLayerMoveMode = m; }
 
 export let penWaveAmp = 0.0; // 0.0 to 1.0 (default 0%)
+export let penOpacityAmp = 0.0; // 0.0 to 1.0 (default 0%)
 export let penWavePeriod = 150; // pixels
 export function setPenWaveAmp(val: number) { penWaveAmp = val; }
+export function setPenOpacityAmp(val: number) { penOpacityAmp = val; }
 export function setPenWavePeriod(val: number) { penWavePeriod = val; }
 
 // StrokeSmoother parameters

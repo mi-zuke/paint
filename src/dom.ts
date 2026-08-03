@@ -114,15 +114,23 @@ app.innerHTML = `
       <div class="tool-group" style="position: relative; gap: 16px;">
         <button id="btn-toggle-tool" class="icon-btn" title="Pen"><i data-lucide="pen-tool"></i></button>
         <button id="btn-pen-settings" class="icon-btn" title="ペンの詳細設定"><i data-lucide="sliders"></i></button>
-        <div id="pen-settings-dropdown" class="settings-dropdown panel-card" style="left: 0; right: auto; min-width: 220px; padding: 14px; gap: 14px;">
+        <div id="pen-settings-dropdown" class="settings-dropdown panel-card" style="left: 0; right: auto; min-width: 230px; padding: 14px; gap: 14px;">
           <div style="font-size: 13px; font-weight: bold; border-bottom: 1px solid var(--border); padding-bottom: 6px; color: var(--foreground);">ペンの詳細設定</div>
           
           <div style="display: flex; flex-direction: column; gap: 10px;">
             <div style="display: flex; justify-content: space-between; font-size: 12px; color: var(--foreground);">
-              <span>強弱の幅 (強度)</span>
+              <span>太さランダム (強度)</span>
               <span><span id="pen-wave-amp-val">0</span>%</span>
             </div>
             <input type="range" id="pen-wave-amp-slider" min="0" max="100" value="0" style="width: 100%; cursor: pointer;" />
+          </div>
+
+          <div style="display: flex; flex-direction: column; gap: 10px;">
+            <div style="display: flex; justify-content: space-between; font-size: 12px; color: var(--foreground);">
+              <span>不透明度ランダム (強度)</span>
+              <span><span id="pen-opacity-amp-val">0</span>%</span>
+            </div>
+            <input type="range" id="pen-opacity-amp-slider" min="0" max="100" value="0" style="width: 100%; cursor: pointer;" />
           </div>
 
           <div style="display: flex; flex-direction: column; gap: 10px;">
@@ -196,6 +204,8 @@ export const btnPenSettings = document.getElementById('btn-pen-settings') as HTM
 export const penSettingsDropdown = document.getElementById('pen-settings-dropdown') as HTMLDivElement;
 export const penWaveAmpSlider = document.getElementById('pen-wave-amp-slider') as HTMLInputElement;
 export const penWaveAmpValEl = document.getElementById('pen-wave-amp-val') as HTMLSpanElement;
+export const penOpacityAmpSlider = document.getElementById('pen-opacity-amp-slider') as HTMLInputElement;
+export const penOpacityAmpValEl = document.getElementById('pen-opacity-amp-val') as HTMLSpanElement;
 export const penWavePeriodSlider = document.getElementById('pen-wave-period-slider') as HTMLInputElement;
 export const penWavePeriodValEl = document.getElementById('pen-wave-period-val') as HTMLSpanElement;
 export const btnSettings = document.getElementById('btn-settings') as HTMLButtonElement;
@@ -223,3 +233,8 @@ export const undoToastEl = document.getElementById('undo-toast') as HTMLDivEleme
 export const btnBackToStart = document.getElementById('btn-back-to-start') as HTMLButtonElement;
 export const btnValidateFiles = document.getElementById('btn-validate-files') as HTMLButtonElement;
 export const btnClearStorage = document.getElementById('btn-clear-storage') as HTMLButtonElement;
+
+export function closeAllDropdowns() {
+  if (penSettingsDropdown) penSettingsDropdown.classList.remove('show');
+  if (settingsDropdown) settingsDropdown.classList.remove('show');
+}

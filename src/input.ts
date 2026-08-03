@@ -1,5 +1,5 @@
 import { activeTouchPointers, drawingPointerId, setDrawingPointerId, isDrawing, setIsDrawing, viewScale, viewOffsetX, viewOffsetY, viewRotation, setViewScale, setViewOffsetX, setViewOffsetY, setViewRotation, initialPinchDistance, initialPinchAngle, initialViewScale, initialViewRotation, initialPinchCenter, initialViewOffset, setInitialPinchDistance, setInitialPinchAngle, setInitialViewScale, setInitialViewRotation, setInitialPinchCenter, setInitialViewOffset, tapRecords, setTapRecords, TAP_MAX_DURATION, TAP_MAX_DISTANCE, isLayerMoveMode } from './state';
-import { container } from './dom';
+import { container, closeAllDropdowns } from './dom';
 import { getCanvasPoint, smootherReset, processResampledPoints, flushComposite, commitStrokeToLayer } from './drawing';
 import { saveUndoState, performUndo, performRedo, pushUndo } from './undo';
 import { updateViewTransform, compositeAndDisplay, compositeFast, getCanvasDPR } from './canvas';
@@ -249,6 +249,7 @@ function handlePointerUp(e: PointerEvent) {
 
 export function initInputListeners() {
   container.addEventListener('pointerdown', (e) => {
+    closeAllDropdowns();
     if (isLayerMoveMode) {
       if (e.pointerType === 'touch') {
         activeTouchPointers.set(e.pointerId, e);

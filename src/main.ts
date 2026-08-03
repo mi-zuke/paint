@@ -245,14 +245,17 @@ btnPenSettings.addEventListener('click', (e) => {
   penSettingsDropdown.classList.toggle('show');
 });
 
-document.addEventListener('click', (e) => {
-  if (!settingsDropdown.contains(e.target as Node) && e.target !== btnSettings) {
+const closeDropdownsOutside = (e: Event) => {
+  if (!settingsDropdown.contains(e.target as Node) && !btnSettings.contains(e.target as Node)) {
     settingsDropdown.classList.remove('show');
   }
-  if (!penSettingsDropdown.contains(e.target as Node) && e.target !== btnPenSettings) {
+  if (!penSettingsDropdown.contains(e.target as Node) && !btnPenSettings.contains(e.target as Node)) {
     penSettingsDropdown.classList.remove('show');
   }
-});
+};
+
+document.addEventListener('click', closeDropdownsOutside);
+document.addEventListener('pointerdown', closeDropdownsOutside);
 
 btnSave.addEventListener('click', async () => {
   if (btnSave.disabled) return;

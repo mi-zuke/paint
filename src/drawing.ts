@@ -1,7 +1,7 @@
 import Color from 'colorjs.io';
 import type { Point } from './types';
-import { currentTool, currentColor, setCurrentColor, currentSize, setCurrentSize, setCurrentTool, isDrawing, anchorPoint, lastInputPoint, lastRenderPos, lastInputTime, positionSmoothing, lazyRadius, setAnchorPoint, setLastInputPoint, setLastRenderPos, setLastInputTime, setLazyRadius, layers, activeLayerId, canvasLogicalW, canvasLogicalH, viewScale, viewOffsetX, viewOffsetY, viewRotation, penWaveAmp, penWavePeriod, setPenWaveAmp, setPenWavePeriod, isLayerMoveMode, setIsLayerMoveMode, strokeCanvas, strokeCtx } from './state';
-import { colorPreview, colorInput, sizeSlider, sizeValEl, stabSlider, stabValEl, btnToggleTool, container, penWaveAmpSlider, penWaveAmpValEl, penWavePeriodSlider, penWavePeriodValEl } from './dom';
+import { currentTool, currentColor, setCurrentColor, currentSize, setCurrentSize, setCurrentTool, isDrawing, anchorPoint, lastInputPoint, lastRenderPos, lastInputTime, positionSmoothing, lazyRadius, setAnchorPoint, setLastInputPoint, setLastRenderPos, setLastInputTime, setLazyRadius, layers, activeLayerId, canvasLogicalW, canvasLogicalH, viewScale, viewOffsetX, viewOffsetY, viewRotation, penWaveAmp, penWavePeriod, setPenWaveAmp, setPenWavePeriod, penOpacityAmp, setPenOpacityAmp, isLayerMoveMode, setIsLayerMoveMode, strokeCanvas, strokeCtx } from './state';
+import { colorPreview, colorInput, sizeSlider, sizeValEl, stabSlider, stabValEl, btnToggleTool, container, penWaveAmpSlider, penWaveAmpValEl, penWavePeriodSlider, penWavePeriodValEl, penOpacityAmpSlider, penOpacityAmpValEl } from './dom';
 import { compositeAndDisplay, compositeFast, clearStrokeCanvas, setLayerCacheDirty } from './canvas';
 import { saveUndoState, showToast } from './undo';
 import { updateLayerMoveBtnUI } from './layers';
@@ -95,6 +95,10 @@ let waveFreq3 = 0;
 let wavePhase1 = 0;
 let wavePhase2 = 0;
 let wavePhase3 = 0;
+let opacityPhase1 = 0;
+let opacityPhase2 = 0;
+let opacityPhase3 = 0;
+let isFirstSegment = true;
 
 function getWaveFactor(d: number): number {
   if (penWaveAmp <= 0) return 1.0;
@@ -102,6 +106,16 @@ function getWaveFactor(d: number): number {
           + 0.35 * Math.sin(waveFreq2 * d + wavePhase2)
           + 0.25 * Math.sin(waveFreq3 * d + wavePhase3);
   return Math.max(0.15, 1.0 + penWaveAmp * w);
+}
+
+function getOpacityWaveFactor(d: number): number {
+  if (penOpacityAmp <= 0) return 1.0;
+  const w = 0.5 * Math.sin(waveFreq1 * 1.3 * d + opacityPhase1)
+          + 0.35 * Math.sin(waveFreq2 * 0.9 * d + opacityPhase2)
+          + 0.25 * Math.sin(waveFreq3 * 1.5 * d + opacityPhase3);
+  const norm = Math.max(0.0, Math.min(1.0, (w + 1.1) / 2.2));
+  const minAlpha = Math.max(0.05, 1.0 - penOpacityAmp * 0.95);
+  return minAlpha + (1.0 - minAlpha) * norm;
 }
 
 let needComposite = false;
@@ -127,7 +141,7 @@ export function drawSegment(from: Point, to: Point) {
   strokeDistance += segmentDist;
 
   // 通常ペンの場合：線分の継ぎ目で端点が重なって濃くなる現象を防ぐため、点列を単一パスとしてストロークバッファへ一括描画する
-  if (currentTool === 'pen' && penWaveAmp <= 0 && strokeCtx && strokeCanvas) {
+  if (currentTool === 'pen' && penWaveAmp <= 0 && penOpacityAmp <= 0 && strokeCtx && strokeCanvas) {
     if (currentStrokePoints.length === 0) {
       currentStrokePoints.push(from);
     }
@@ -150,30 +164,69 @@ export function drawSegment(from: Point, to: Point) {
   }
 
   const ctx = layer.ctx;
-  ctx.beginPath();
-  ctx.moveTo(from.x, from.y);
-  ctx.lineTo(to.x, to.y);
 
   if (currentTool === 'eraser') {
+    ctx.beginPath();
+    ctx.moveTo(from.x, from.y);
+    ctx.lineTo(to.x, to.y);
     ctx.globalCompositeOperation = 'destination-out';
     ctx.strokeStyle = 'rgba(0,0,0,1)';
     ctx.lineWidth = currentSize * 2;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.stroke();
   } else {
+    // 始端の丸キャップ描画
+    if (isFirstSegment) {
+      ctx.save();
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.fillStyle = currentColor;
+      ctx.globalAlpha = getOpacityWaveFactor(strokeDistance);
+      const r = (currentSize * getWaveFactor(strokeDistance)) / 2;
+      ctx.beginPath();
+      ctx.arc(from.x, from.y, r, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+      isFirstSegment = false;
+    }
+
+    ctx.save();
+    ctx.beginPath();
+    ctx.moveTo(from.x, from.y);
+    ctx.lineTo(to.x, to.y);
     ctx.globalCompositeOperation = 'source-over';
     ctx.strokeStyle = currentColor;
     ctx.lineWidth = currentSize * getWaveFactor(strokeDistance);
+    ctx.globalAlpha = getOpacityWaveFactor(strokeDistance);
+    ctx.lineCap = 'butt';
+    ctx.lineJoin = 'round';
+    ctx.stroke();
+    ctx.restore();
   }
-
-  ctx.lineCap = 'round';
-  ctx.lineJoin = 'round';
-  ctx.stroke();
 
   ctx.globalCompositeOperation = 'source-over';
   needComposite = true;
 }
 
 export function commitStrokeToLayer() {
-  if (currentStrokePoints.length === 0 || currentTool !== 'pen' || penWaveAmp > 0) {
+  if (currentStrokePoints.length === 0 || currentTool !== 'pen' || (penWaveAmp > 0 || penOpacityAmp > 0)) {
+    if (lastRenderPos && currentTool === 'pen' && (penWaveAmp > 0 || penOpacityAmp > 0)) {
+      const layer = getActiveLayer();
+      if (layer) {
+        const ctx = layer.ctx;
+        ctx.save();
+        ctx.globalCompositeOperation = 'source-over';
+        ctx.fillStyle = currentColor;
+        ctx.globalAlpha = getOpacityWaveFactor(strokeDistance);
+        const r = (currentSize * getWaveFactor(strokeDistance)) / 2;
+        ctx.beginPath();
+        ctx.arc(lastRenderPos.x, lastRenderPos.y, r, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+        needComposite = true;
+        setLayerCacheDirty(true);
+      }
+    }
     return;
   }
   const layer = getActiveLayer();
@@ -230,6 +283,10 @@ export function smootherReset() {
   wavePhase1 = Math.random() * Math.PI * 2;
   wavePhase2 = Math.random() * Math.PI * 2;
   wavePhase3 = Math.random() * Math.PI * 2;
+  opacityPhase1 = Math.random() * Math.PI * 2;
+  opacityPhase2 = Math.random() * Math.PI * 2;
+  opacityPhase3 = Math.random() * Math.PI * 2;
+  isFirstSegment = true;
   currentStrokePoints = [];
   clearStrokeCanvas();
 }
@@ -341,6 +398,12 @@ export function initDrawingListeners() {
     const sliderVal = parseFloat((e.target as HTMLInputElement).value);
     setPenWaveAmp(sliderVal / 100);
     penWaveAmpValEl.innerText = Math.round(sliderVal).toString();
+  });
+
+  penOpacityAmpSlider.addEventListener('input', (e) => {
+    const sliderVal = parseFloat((e.target as HTMLInputElement).value);
+    setPenOpacityAmp(sliderVal / 100);
+    penOpacityAmpValEl.innerText = Math.round(sliderVal).toString();
   });
 
   penWavePeriodSlider.addEventListener('input', (e) => {
